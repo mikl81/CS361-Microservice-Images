@@ -1,18 +1,3 @@
-"""
-ZMQ Image Search Microservice - Server
----------------------------------------
-Listens for search query strings over ZMQ and replies with
-the raw bytes of the top Google Image Search result.
-
-Setup:
-    pip install pyzmq requests
-
-Usage:
-    export GOOGLE_API_KEY="your_api_key"
-    export GOOGLE_CX="your_custom_search_engine_id"
-    python zmq_image_server.py
-"""
-
 import os
 import zmq
 import requests
