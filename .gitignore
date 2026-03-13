@@ -1,1 +1,7 @@
+.gitignore
+
 test_client.py
+/test_download
+/downloads
+/imagedl_outputs
+
