@@ -1,5 +1,5 @@
-import os
 import zmq
+import json
 from imagedl.modules.sources import GoogleImageClient
 
 
@@ -9,8 +9,9 @@ ZMQ_ADDRESS   = "tcp://*:5555"
 
 
 def searchImages(query:str, limit:int = 10, dest_dir:str="downloads") -> list:
-    """Searchs google for the indicated query then returns the results equal to the limit(default 10). 
-        Destination directory can be provided, defaults to downloads
+    """
+    Searchs google for the indicated query then returns the results equal to the limit(default 10). 
+        Destination directory can be provided, defaults to 'downloads'
     """
     image_client = GoogleImageClient(work_dir = dest_dir)
     image_infos = image_client.search(query, search_limits=limit, num_threadings=5)
@@ -22,7 +23,10 @@ def searchImages(query:str, limit:int = 10, dest_dir:str="downloads") -> list:
     return retlist
 
 def downloadImages(query:str, dest_dir:str="downloads", limit:int = 10) -> list:
-
+    """
+    Downloads provided query specified to the limit, defaults to 10. 
+        Destination directory can also be provided, defaults to 'downloads'
+    """
     image_client = GoogleImageClient()
     image_infos = searchImages(query, limit=limit, dest_dir=dest_dir)
 
@@ -31,6 +35,9 @@ def downloadImages(query:str, dest_dir:str="downloads", limit:int = 10) -> list:
     return retList
 
 def pull_paths(image_data:list) -> list:
+    """
+    Pulls the relative paths for the downloaded files to be passed in ZMQ
+    """
     path_list = []
 
     for i in range(len(image_data)):
@@ -40,42 +47,36 @@ def pull_paths(image_data:list) -> list:
     return path_list
 
 def run_server():
+    """
+    Boots the ZMQ server and awaits JSON data from client for image search
+    """
     context = zmq.Context()
     socket  = context.socket(zmq.REP)
     socket.bind(ZMQ_ADDRESS)
     print("Server listening on %s", ZMQ_ADDRESS)
 
-   
     while True:
         #Receive query
-        raw = socket.recv()
-        query = raw.decode("utf-8").strip()
-        print("Received query: %r", query)
-
-        if not query:
+        data = socket.recv_json()
+        if not data:
             socket.send(b"ERROR:empty_query")
             continue
 
-        #Search
-        # # image_url = search_google_images(query)
-        # if image_url is None:
-        #     socket.send(b"ERROR:no_results")
-        #     continue
+        query, limit, dest_dir = data["query"], int(data["limit"]), data["dest_dir"]
 
-        # print("Top result URL: %s", image_url)
+        if limit is None:
+            limit = 10
+        if dest_dir is None:
+            dest_dir = "downloads"
 
-        # # Fetch image
-        # image_bytes = fetch_image_bytes(image_url)
-        # if image_bytes is None:
-        #     socket.send(b"ERROR:fetch_failed")
-        #     continue
+        results = downloadImages(query, limit=limit, dest_dir=dest_dir)
+        payload = {
+            "results" : pull_paths(results)
+        }
+        json_pack = json.dumps(payload)
 
-        # #Reply with raw image bytes
-        # print("Sending image (%d bytes)", len(image_bytes))
-        # socket.send(image_bytes)
+        socket.send_json(json_pack)
 
 
 if __name__ == "__main__":
-    #run_server()
-    results = downloadImages("mountains", limit=1)
-    print(pull_paths(results))
+    run_server()
