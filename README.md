@@ -16,3 +16,7 @@ payload = {
         "results": [list_of_relative_file_paths]
     }
  ```
+
+
+Application currently downloads to a subdirectory where
+the server is located
